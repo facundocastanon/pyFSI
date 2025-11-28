@@ -1,0 +1,237 @@
+
+{
+    "info": " Dynamag50 with polycarbonate wall (low first mode damping) and soft flextensional",
+
+    "execution":
+    {
+        "time":
+        {
+            "startTime":    0.0,
+            "endTime":      30,
+            "deltaT":       1E-4
+        },
+        "solver":
+        {
+            "type":         "transientFSI",
+            "integrators":
+            {
+                "solid":
+                {
+                    "type": "generalizedAlpha",
+                    "rho":   0.8,
+                    "rtol":  1E-2,
+                    "atol":  1E-4
+                },
+                "flow":
+                {
+                    "type":  "Radau",
+                    "rtol":  1E-2,
+                    "atol":  1E-4
+                }
+            },
+            "coupling":
+            {
+                "type":             "implicit",
+                "maxIterations":    10,
+                "tolerances":
+                {
+                    "Displacements":    1E-4,
+                    "Velocities":       1E-4,
+                    "Accelerations":    1E-2,
+                    "Forces":           1E-4
+                },
+			    "relaxation":
+			    {
+				    "type": 		    "constant",
+				    "Accelerations": 	0.9
+		            }
+			}
+        },
+        "output":
+        {
+            "SOLID":   ["mesh", "displacements", "velocities"],
+            "FLOW":    ["flowRates"],
+            "CIRCUIT": ["power"],
+            "BEAMTOP": ["pressure", "pressureCenter"]
+        },
+        "debug":    "yes"
+    },
+
+
+    "mesh":
+    {
+	    "name":   "malla",
+        "type":   "from3Parameters",
+        "xi": 	  0.0,
+        "xf": 	  40.7E-3,
+        "dx": 	  40.7E-5
+    },
+
+
+    "boundary":[
+        {
+            "name":           "WALLTOP",
+            "type":           "boundary1DRigid",
+            "method":         "fromPoints",
+            "normal":         -1,
+            "interpolation":  "quadratic",
+            "points":         [ [0.0,    1.18E-3, 2.33E-3,  3.34E-3,  5.04E-3,   6.91E-3, 22.05E-3, 30.6E-3,   40.7E-3],
+                                [8E-3, 4.37E-3,  2.21E-3,  1.21E-3,  0.631E-3,   0.96E-3,  6E-3,     7.84E-3,   8.89E-3]],
+            "transform":    {"translate": 0.58E-3}
+        },
+        {
+            "name":           "WALLBOT",
+            "type":           "boundary1DRigid",
+            "method":         "fromPoints",
+            "normal":         1,
+            "interpolation":  "quadratic",
+            "points":         [ [0.0,    1.18E-3, 2.33E-3,  3.34E-3,  5.04E-3,   6.91E-3, 22.05E-3, 30.6E-3,  40.7E-3],
+                                [-8E-3, -4.37E-3,  -2.21E-3,  -1.21E-3,-0.631E-3,-0.96E-3, -6E-3,   -7.84E-3,  -8.89E-3]],
+            "transform":    {"translate": -0.58E-3}
+
+        },
+        {
+            "name":           "BEAMTOP",
+            "type":           "boundary1DFlexible",
+            "method":         "fromPoints",
+            "normal":         1,
+            "interpolation":  "linear",
+            "points":         [ [0.0,        40.7E-3],
+                                [0.5E-3,      0.5E-3]],
+            "couple":          ["Displacements", "Velocities", "Accelerations", "Forces"]
+        },
+        {
+            "name":           "BEAMBOT",
+            "type":           "boundary1DFlexible",
+            "method":         "fromPoints",
+            "normal":         -1,
+            "interpolation":  "linear",
+            "points":         [ [0.0,        40.7E-3],
+                                [-0.5E-3,      -0.5E-3]],
+            "couple":          ["Displacements", "Velocities", "Accelerations", "Forces"]
+        }],
+
+
+    "solid":[
+    {
+        "name":         "SOLID",
+        "formulation":  "flextensionalBeam",
+        "solution":
+        {
+            "type":     	"modal",
+            "method":   	"analytic",
+            "modes":    	4,
+            "damping":  	{"type": "modal", "ratios":[0.0078, 0.03, 0.03, 0.03]}
+        },
+        "section":
+        {
+            "type":     "rect",
+            "b":          1,
+            "h":          1.0E-3
+        },
+        "material":
+        {
+            "name":       "aluminio",
+            "type":       "isoElastic",
+            "E":          68.9E9,
+            "nu":         0.33,
+            "rho":        2.7E3
+        },
+        "boundary":       ["BEAMTOP", "BEAMBOT"],
+        "bc":
+        {
+            "Note":             "Remember to enter values per unit thickness. Divide FEM results by thickness",
+            "type":             "spring-free",
+            "Kt":               5500000,
+            "Ct":               0,
+            "Mt":               6.50,
+            "y0":               0.0,
+            "dy0":              0.0
+        },
+        "forces":[
+        {
+            "type":     "gravity",
+            "name":     "gravedad",
+            "value":    -9.8
+        },
+        {
+            "type":     "boundary"
+        },
+        {
+            "type":     "concentrated",
+            "object":   "CIRCUIT",
+            "location":  2
+        }]
+    },
+    {
+        "name":         "CIRCUIT",
+        "formulation":  "damper",
+        "coefficients": [2.7,0, 0],
+        "cutIn":        5.0
+    }],
+
+    "flow" :
+    {
+        "name":        "FLOW",
+        "formulation": "nlLeakageFlow2D",
+        "units":       "m",
+        "plot":        "yes",
+        "fluid":
+        {
+            "db": "air"
+        },
+        "thickness": 1,
+        "regions":[
+        {
+            "name":        "channelTop",
+            "type":        "top",
+            "topBoundary": "WALLTOP",
+            "botBoundary": "BEAMTOP"
+        },
+        {
+            "name":        "channelBot",
+            "type":        "bot",
+            "topBoundary": "BEAMBOT",
+            "botBoundary": "WALLBOT"
+        }],
+        "bc" :
+        {
+            "inlet":
+	        {
+	            "p":
+				{
+					"type":   		   "tabulatedFixedValue",
+					"interpolation":   "linear",
+					"time":   			[0.0,        10.0],
+					"value":  			[800,        800]
+				},
+			    "zeta":
+				{					"type": 			"fixedValue",
+					"value":       		1.0
+				}
+			},
+
+            "outlet":
+	        {
+	            "p":
+				{
+					"type":   		   "fixedValue",
+					"value":   			0.0
+				},
+			    "zeta":
+				{
+					"type":   		   "fixedValue",
+					"value":   			0.0
+				}
+        	}
+		}
+	},
+
+    "fsi":
+    {
+        "name":             "interaccion",
+        "participants":     ["FLOW", "SOLID"],
+        "formulation":      "nlLFB1D"
+    }
+
+}

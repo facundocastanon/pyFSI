@@ -1,0 +1,202 @@
+
+{
+    "info": "Transient analysis of Nagakura test case",
+
+    "execution":
+    {
+        "time":
+        {
+            "startTime":    0.0,
+            "endTime":      5,
+            "deltaT":       1E-4
+        },
+        "solver":
+        {
+            "type":         "transientFSI",
+            "integrators":
+            {
+                "solid":
+                {
+                    "type": "Newmark",
+                    "atol": 1E-5,
+                    "rtol": 1E-5
+                },
+                "flow":
+                {
+                    "type":  "Radau",
+                    "atol": 1E-5,
+                    "rtol": 1E-5
+                }
+            },
+            "coupling":
+            {
+                "type": "explicit"
+            }
+        },
+        "output":
+        {
+            "SOLID":   ["mesh", "displacements"],
+            "FLOW":    ["flowRates", "flowSpeeds"],
+            "BEAMTOP": ["pressure", "pressureCenter"]
+        }
+    },
+
+    "mesh":
+    {
+	    "name":   "malla",
+        "type":   "from3Parameters",
+        "xi": 	   0.0,
+        "xf": 	   0.2,
+        "dx": 	   0.002
+    },
+
+
+    "boundary":[
+        {
+            "name":           "WALLTOP",
+            "type":           "boundary1DRigid",
+            "method":         "fromPoints",
+            "normal":         -1,
+            "interpolation":  "linear",
+            "points":         [ [0.0,     0.2],
+                                [6E-3,     6E-3]]
+        },
+        {
+            "name":           "WALLBOT",
+            "type":           "boundary1DRigid",
+            "method":         "fromPoints",
+            "normal":         1,
+            "interpolation":  "linear",
+            "points":         [ [0.0,     0.2],
+                                [-6E-3,    -6E-3]]
+        },
+        {
+            "name":           "BEAMTOP",
+            "type":           "boundary1DFlexible",
+            "method":         "fromPoints",
+            "normal":         1,
+            "interpolation":  "linear",
+            "points":         [ [0.0,        0.2],
+                                [0.1E-3,     0.1E-3]],
+            "couple":          ["Displacements", "Velocities", "Accelerations", "Forces"]
+        },
+        {
+            "name":           "BEAMBOT",
+            "type":           "boundary1DFlexible",
+            "method":         "fromPoints",
+            "normal":         -1,
+            "interpolation":  "linear",
+            "points":         [ [0.0,        0.2],
+                                [-0.1E-3,    -0.1E-3]],
+            "couple":          ["Displacements", "Velocities", "Accelerations", "Forces"]
+        }],
+
+
+    "solid":[
+    {
+        "name":         "SOLID",
+        "formulation":  "flextensionalBeam",
+        "solution":
+        {
+            "type":     	"modal",
+            "method":   	"analytic",
+            "modes":    	4,
+            "damping":  	{"type": "modal", "ratios": [0.02, 0.02, 0.02, 0.02]}
+        },
+        "section":
+        {
+            "type":     "rect",
+            "b":        1,
+            "h":        0.2E-3
+        },
+        "material":
+        {
+            "name":     "aluminio",
+            "type":     "isoElastic",
+            "E":        1.1E11,
+            "nu":       0.3,
+            "rho":      8.78E3
+        },
+        "boundary":     ["BEAMTOP", "BEAMBOT"],
+        "bc":
+        {
+            "Note":     "Remember to enter values per unit thickness",
+            "type":     "clamped-free"
+        },
+        "forces":[
+        {
+            "type":     "gravity",
+            "name":     "gravedad",
+            "value":    -9.8E-2
+        },
+        {
+            "type":     "boundary"
+        }]
+    }],
+
+    "flow" :
+    {
+        "name":        "FLOW",
+        "formulation": "nlLeakageFlow2D",
+        "units":       "m",
+        "plot":        "no",
+        "fluid":
+        {
+            "db": "air"
+        },
+        "thickness": 1,
+        "regions":[
+        {
+            "name":        "channelTop",
+            "type":        "top",
+            "topBoundary": "WALLTOP",
+            "botBoundary": "BEAMTOP"
+        },
+        {
+            "name":        "channelBot",
+            "type":        "bot",
+            "topBoundary": "BEAMBOT",
+            "botBoundary": "WALLBOT"
+        }],
+        "bc" :
+        {
+            "inlet":
+	        {
+	            "p":
+				{
+					"type":   		   "tabulatedFixedValue",
+					"interpolation":   "linear",
+					"time":   			[0.0,      5.0],
+					"value":  			[5.0,      20.0]
+				},
+			    "zeta":
+				{
+					"type": 			"fixedValue",
+					"value":       		1.0
+				}
+			},
+
+            "outlet":
+	        {
+	            "p":
+				{
+					"type":   		   "fixedValue",
+					"value":   			0.0
+				},
+			    "zeta":
+				{
+					"type":   		   "fixedValue",
+					"value":   			0.0
+				}
+        	}
+		}
+	},
+
+    "fsi":
+    {
+        "name":             "interaccion",
+        "participants":     ["FLOW", "SOLID"],
+        "formulation":      "nlLFB1D"
+    }
+
+}

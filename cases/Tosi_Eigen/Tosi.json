@@ -1,0 +1,183 @@
+
+{
+    "Info": "Linear analysis of DMG48",
+
+    "execution":
+    {
+        "solver":
+        {
+            "type":         "eigen"
+        },
+        "time":
+        {
+            "startTime":    0.0,
+            "endTime":      1.0,
+            "deltaT":       0.001
+        },
+        "output":{
+			"FLUJO": 		 ["flowRates", "flowSpeeds", "numbers","channelSize"],
+			"VIGA": 		 ["mesh", "eigenValues"],
+			"FSI":   ["eigenValues", "eigenVectors"]},
+        "debug":             "yes"
+    },
+
+    "mesh":
+    {
+		"name":           "MALLA",
+        "type":           "from3Parameters",
+        "xi": 	          0.0,
+        "xf": 	          40.7E-3,
+        "dx": 	          40.7E-5
+    },
+
+    "boundary":[
+        {
+            "name":           "WALLTOP",
+            "type":           "boundary1DRigid",
+            "method":         "fromPoints",
+            "interpolation":  "quadratic",
+            "normal":         -1,
+            "points":         [ [0.0,     5E-3,   22.03E-3, 32.8E-3,   40.7E-3],
+                                [2.5E-3,  1.0E-3,   4.0E-3,   9.0E-3,   15.0E-3]],
+            "transform":      {"translate": 0.0E-3}},
+        {
+            "name":           "WALLBOT",
+            "type":           "boundary1DRigid",
+            "method":         "fromPoints",
+            "normal":         1,
+            "interpolation":  "quadratic", 
+            "points":         [ [0.0,     5E-3,    22.03E-3,    32.8E-3,   40.7E-3],
+                                [-2.5E-3, -1.0E-3,   -4.0E-3,    -9.0E-3,   -15.0E-3]],
+            "transform":      {"translate": -0.0E-3}},
+        {
+            "name":           "BEAMTOP",
+            "type":           "boundary1DFlexible",
+            "method":         "fromPoints",
+            "normal":         1,
+            "interpolation":  "linear",
+            "points":         [ [0.0,        40.7E-3],
+                                [0.35E-3,    0.0E-3]]},
+        {
+            "name":           "BEAMBOT",
+            "type":           "boundary1DFlexible",
+            "method":         "fromPoints",
+            "normal":         -1,
+            "interpolation":  "linear",
+            "points":         [ [0.0,        40.7E-3],
+                                [-0.35E-3,  -0.0E-3]]
+        }],
+
+    "solid":[
+        {
+        "name":           "VIGA",
+        "formulation":    "flextensionalBeam",
+        "section":
+        {
+            "type":       "rect",
+            "b":          1,
+            "h":          0.7E-3
+        },
+        "material":
+        {
+            "name":       "aluminio",
+            "type":       "isoElastic",
+            "E":          68.9E9,
+            "nu":         0.33,
+            "rho":        2.7E3
+            },
+        "boundary":     ["BEAMTOP", "BEAMBOT"],
+        "solution":
+        {
+            "type":     	"modal",
+            "method":   	"analytic",
+            "modes":    	 4,
+            "damping":  	{"type": "modal", "ratios":[0.0078, 0.03, 0.03, 0.03]}
+        },
+        "bc":
+        {
+            "Note":             "Remember to enter values per unit thickness. Divide FEM results by thickness",
+            "type":             "spring-free",
+            "Kt":               22608750,
+            "Ct":               18.35,
+            "Mt":               3.14,
+            "y0":               0.0,
+            "dy0":              0.0
+        },
+        "forces":[
+            {
+              "type":       "gravity",
+              "value":      -9.8
+            },
+            {
+              "type":       "distributed",
+              "object":     "FLUJO"
+            }]
+    }],
+
+    "flow" :
+    {
+        "name":           "FLUJO",
+        "formulation":    "leakageFlow2D",
+        "eigen":          "VIGA",
+        "type":           "dualChannel",
+        "units":          "m",
+        "plot":           "no",
+        "fluid":
+        {
+            "db": "air"
+        },
+        "thickness": 1,
+        "regions":[
+        {
+            "name":        "channelTop",
+            "type":        "top",
+            "topBoundary": "WALLTOP",
+            "botBoundary": "BEAMTOP"
+        },
+        {
+            "name":        "channelBot",
+            "type":        "bot",
+            "topBoundary": "BEAMBOT",
+            "botBoundary": "WALLBOT"
+        }],
+        "bc" :
+        {
+           "inlet":
+	        {
+	            "Q0":
+				{
+					"type":   		   "tabulatedFixedValue",
+					"interpolation":   "linear",
+					"time":   			[0.0,     1.0],
+					"value":  			[0.01,   2.0],
+                    "_factorToLiter":   84
+				},
+			    "zeta":
+				{
+					"type": 			"fixedValue",
+					"value":       		1.0
+				}
+			},
+            "outlet":
+            {
+	            "Q0":
+				{
+					"type":   		   "outFlow"
+				},
+			    "zeta":
+				{
+					"type":   		   "fixedValue",
+					"value":   			0.0
+				}
+            }
+        }
+	},
+
+	"fsi":
+	{
+	    "name":                "FSI",
+        "participants":        ["FLUJO", "VIGA"],
+	    "formulation":         "lfb1D",
+        "type":                "Saravia"
+	}
+}
