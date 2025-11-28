@@ -1,0 +1,12 @@
+#!/bin/bash
+if [ "$SUDO_USER" ]; then
+  homeDir="/home/$SUDO_USER"
+else
+  homeDir="$HOME"
+fi
+
+cd "$homeDir/FSI/cases"
+
+exec $SHELL
+
+echo "Changed directory to: $(pwd)"
