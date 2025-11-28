@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo Removing pyFSI case files...
+
+rm -rf execution fsi solid flow magnetism results *.obj *.log *.pdf *.mp4
